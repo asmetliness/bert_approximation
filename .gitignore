@@ -3,6 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+datasets/
+Context.txt
+*Task*.md
+
+*debug*
+
 # C extensions
 *.so
 

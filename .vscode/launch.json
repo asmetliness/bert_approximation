@@ -1,0 +1,24 @@
+{
+  // Debug configuration for vocabulary.py
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Vocabulary Builder",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/vocabulary.py",
+      "console": "integratedTerminal",
+      "args": [
+        "--msmarco_path", "${workspaceFolder}/datasets/ms_marco_tiny/collection_tiny.tsv",           // <-- Change to your MS MARCO data file
+        "--output_dir", "vocabulary_debug",        // <-- Change output directory as needed
+        "--sp_vocab_size", "20000",
+        "--min_freq_ngram", "5",
+        "--top_n_pmi", "5000",
+        "--top_n_bert", "5000",
+        "--bert_model_name", "bert-base-uncased",
+        "--device", "cuda"                          // <-- Change to "cuda" if you want to use GPU
+      ],
+      "justMyCode": true
+    }
+  ]
+}
