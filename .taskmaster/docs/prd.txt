@@ -1,0 +1,226 @@
+# BERT Approximation Model - Product Requirements Document
+
+## Overview
+This project aims to develop a lightweight neural network that approximates BERT's CLS embeddings for dense retrieval tasks. The core innovation is using pre-computed embeddings of n-grams and skip-grams from a curated vocabulary to achieve BERT-like semantic understanding with significantly reduced computational overhead. The target is to achieve 10-100x faster inference than BERT while maintaining >95% of the retrieval quality.
+
+The project addresses the computational bottleneck in dense retrieval systems where BERT's quadratic attention complexity becomes prohibitive for real-time applications. By shifting the heavy semantic encoding to an offline preprocessing step and using a lightweight aggregation model online, we can enable high-throughput semantic search in production environments.
+
+## Core Features
+
+### 1. Neural Network Architecture Implementation
+**What it does:** Implements the DeepSets + Attention pooling architecture detailed in Model_Architecture.md
+**Why it's important:** This is the core approximation model that transforms bag-of-embeddings input into BERT-like CLS embeddings
+**How it works:** 
+- Token transformation network (φ) processes each vocabulary embedding independently
+- Attention-based pooling mechanism learns to weight important tokens
+- Output transformation network (ρ) produces final 768-dimensional embedding
+- Model handles variable-length input sets and is permutation-invariant
+
+### 2. Knowledge Distillation Training Pipeline
+**What it does:** Trains the approximation model to mimic BERT's CLS embeddings using MSE loss
+**Why it's important:** Ensures the lightweight model maintains semantic fidelity to BERT's representations
+**How it works:**
+- Generates training pairs: (bag-of-vocabulary-embeddings, BERT-CLS-embedding)
+- Uses teacher-student paradigm with frozen BERT as teacher
+- Implements efficient batching with padding/masking for variable set sizes
+- Supports precomputed teacher embeddings for faster training
+
+### 3. Vocabulary-Based Tokenization Engine
+**What it does:** Converts input text to bag of pre-computed vocabulary embeddings using longest-match algorithm
+**Why it's important:** Bridge between raw text and model input, leveraging the pre-built vocabulary
+**How it works:**
+- Implements trie-based longest-match tokenization for n-grams and skip-grams
+- Efficiently retrieves pre-computed BERT embeddings for matched tokens
+- Handles out-of-vocabulary tokens gracefully
+- Optimized for 512-token input sequences
+
+### 4. Evaluation and Benchmarking Framework
+**What it does:** Comprehensive testing suite for model quality and performance
+**Why it's important:** Validates that the approximation maintains retrieval quality while achieving speed gains
+**How it works:**
+- Semantic similarity correlation tests against BERT embeddings
+- Retrieval quality evaluation on MS MARCO dev set
+- Inference speed benchmarking across different hardware configurations
+- Memory usage profiling and optimization analysis
+
+### 5. Production Inference Pipeline
+**What it does:** Optimized inference system for real-time embedding generation
+**Why it's important:** Enables deployment in high-throughput production environments
+**How it works:**
+- Batched inference for multiple queries
+- CPU/GPU deployment options with quantization support
+- Caching mechanisms for common token combinations
+- Integration with approximate nearest neighbor search (Faiss)
+
+## User Experience
+
+### Primary User Personas
+**Research Scientists:** Need to validate the approach, compare against baselines, and publish results
+**ML Engineers:** Require production-ready inference pipelines with clear performance characteristics
+**Systems Engineers:** Need deployment guidance, resource requirements, and monitoring capabilities
+
+### Key User Flows
+**Model Development Flow:**
+1. Researcher loads pre-built vocabulary and embeddings
+2. Configures model architecture parameters (hidden dimensions, attention heads)
+3. Initiates training with specified dataset and validation split
+4. Monitors training progress through loss curves and similarity metrics
+5. Evaluates trained model on benchmark tasks
+6. Exports optimized model for inference
+
+**Production Deployment Flow:**
+1. Engineer loads trained model and vocabulary
+2. Configures inference batch size and hardware preferences
+3. Integrates with existing retrieval pipeline
+4. Monitors inference latency and throughput
+5. Validates retrieval quality against baseline metrics
+
+**Research Experimentation Flow:**
+1. Scientist modifies architecture components (attention mechanisms, pooling strategies)
+2. Runs ablation studies with different vocabulary sizes or embedding dimensions
+3. Compares results across different teacher models (BERT, DistilBERT, etc.)
+4. Analyzes failure cases and semantic drift patterns
+
+## Technical Architecture
+
+### System Components
+**Model Core:** PyTorch-based BERTApproximator class with configurable architecture
+**Training Engine:** Distributed training support with gradient accumulation and mixed precision
+**Vocabulary Handler:** Efficient storage and retrieval of pre-computed embeddings
+**Evaluation Suite:** Standardized benchmarks for retrieval and semantic similarity tasks
+**Inference Engine:** Optimized serving with batching and hardware acceleration
+
+### Data Models
+**Vocabulary Structure:** 
+- Token -> Embedding mapping (pickle/HDF5 storage)
+- Frequency statistics and semantic clusters
+- Trie structure for efficient longest-match lookup
+
+**Training Data:**
+- Text samples with corresponding BERT embeddings
+- Tokenized representations with vocabulary matches
+- Validation splits for hyperparameter tuning
+
+**Model Checkpoints:**
+- State dictionaries with optimizer states
+- Configuration metadata and training statistics
+- Export formats for different deployment targets
+
+### APIs and Integrations
+**Training API:** Configuration-driven training with logging and checkpointing
+**Inference API:** Batch and single-query embedding generation
+**Evaluation API:** Standardized benchmark execution and reporting
+**Export API:** Model conversion for deployment (ONNX, TorchScript)
+
+### Infrastructure Requirements
+**Training:** GPU-enabled environment with sufficient memory for batch processing
+**Inference:** CPU or GPU deployment options with configurable precision
+**Storage:** Efficient vocabulary and model storage with fast lookup capabilities
+**Monitoring:** Performance metrics, quality drift detection, and resource usage tracking
+
+## Development Roadmap
+
+### Phase 1: Core Model Implementation (MVP)
+**Scope:** Basic working model that can approximate BERT embeddings
+- Implement BERTApproximator neural network architecture
+- Create training loop with MSE loss and basic data loading
+- Integrate with existing vocabulary builder and embeddings
+- Basic evaluation against BERT similarity on small test set
+- Simple inference pipeline for single queries
+
+### Phase 2: Training Pipeline and Evaluation
+**Scope:** Robust training infrastructure and comprehensive evaluation
+- Implement distributed training with gradient accumulation
+- Add validation splits and early stopping
+- Create comprehensive evaluation suite (MS MARCO retrieval, similarity benchmarks)
+- Add training monitoring and visualization tools
+- Hyperparameter optimization framework
+
+### Phase 3: Production Optimization
+**Scope:** Performance optimization and deployment readiness
+- Inference optimization (batching, quantization, caching)
+- Multi-threaded/GPU inference pipeline
+- Memory usage optimization and profiling
+- Integration with Faiss for end-to-end retrieval
+- Deployment documentation and configuration management
+
+### Phase 4: Advanced Features and Research Extensions
+**Scope:** Enhanced model capabilities and research contributions
+- Multi-head attention pooling variants
+- Self-attention mechanisms between tokens
+- Dynamic vocabulary adaptation
+- Comparative analysis with other approximation methods
+- Publication-ready benchmarking and analysis
+
+## Logical Dependency Chain
+
+### Foundation Layer (Immediate Priority)
+1. **Model Architecture Implementation** - Core neural network must be implemented first
+2. **Basic Training Loop** - Simple training pipeline to validate the approach
+3. **Vocabulary Integration** - Connect pre-built vocabulary to model input pipeline
+
+### Validation Layer (Build Upon Foundation)
+4. **Evaluation Framework** - Essential for validating model quality during development
+5. **Training Monitoring** - Logging and visualization to guide model improvement
+6. **Basic Inference Pipeline** - Simple serving capability for testing
+
+### Optimization Layer (Performance Focus)
+7. **Advanced Training Features** - Distributed training, mixed precision, advanced optimizers
+8. **Inference Optimization** - Batching, quantization, and hardware-specific optimizations
+9. **Production Pipeline** - Robust serving infrastructure with monitoring
+
+### Research Layer (Final Enhancements)
+10. **Advanced Architecture Variants** - Multi-head attention, self-attention extensions
+11. **Comprehensive Benchmarking** - Full evaluation against multiple baselines and tasks
+12. **Documentation and Publication** - Research documentation and deployment guides
+
+The logical progression ensures each component builds upon previous work, with early focus on proving the core concept before optimizing for production deployment. The architecture is designed to get to a working prototype quickly (Phase 1) while maintaining extensibility for advanced features.
+
+## Risks and Mitigations
+
+### Technical Challenges
+**Risk:** Model may not achieve sufficient approximation quality to BERT
+**Mitigation:** Implement gradual complexity increases (start with simple pooling, add attention, then self-attention). Use validation curves to guide architectural decisions.
+
+**Risk:** Training instability or convergence issues
+**Mitigation:** Implement learning rate scheduling, gradient clipping, and multiple initialization strategies. Use teacher embedding normalization and multiple loss functions.
+
+**Risk:** Inference speed may not meet target improvements
+**Mitigation:** Profile bottlenecks early, implement quantization and batching optimizations. Consider model compression techniques and hardware-specific optimizations.
+
+### Resource Constraints
+**Risk:** Limited computational resources for training large-scale models
+**Mitigation:** Implement efficient data loading with precomputed teacher embeddings. Use gradient accumulation and mixed precision training.
+
+**Risk:** Memory limitations with large vocabulary storage
+**Mitigation:** Implement efficient embedding storage formats (HDF5, compressed representations). Add vocabulary pruning based on frequency/importance.
+
+### Project Scope Management
+**Risk:** Scope creep with too many architectural variants
+**Mitigation:** Focus on core MVP first, then systematically evaluate variants. Maintain clear success criteria for each phase.
+
+**Risk:** Evaluation complexity overwhelming development
+**Mitigation:** Start with simple similarity metrics, gradually add retrieval benchmarks. Automate evaluation pipeline early.
+
+## Appendix
+
+### Technical Specifications
+- **Model Parameters:** ~1-5M parameters (vs BERT's 110M)
+- **Input Dimensions:** 768 (BERT embedding size)
+- **Output Dimensions:** 768 (BERT CLS size)
+- **Max Sequence Length:** 512 tokens
+- **Target Inference Speed:** 10-100x faster than BERT
+- **Target Quality:** >95% correlation with BERT embeddings
+
+### Research Context
+This project builds upon several key research areas:
+- **Set Neural Networks:** DeepSets framework for permutation-invariant functions
+- **Knowledge Distillation:** Teacher-student training for model compression
+- **Dense Retrieval:** Semantic search using learned embeddings
+- **Attention Mechanisms:** Selective pooling for important information
+
+### Implementation Notes
+- Use existing vocabulary builder and pre-computed embeddings from vocabulary.py
+- Leverage sentence-transformers/msmarco-distilbert-dot-v5 as teacher model
+- Target PyTorch implementation with optional ONNX export
+- Support both CPU and GPU inference with configurable precision
